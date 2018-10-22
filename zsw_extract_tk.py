@@ -1,4 +1,4 @@
-# -*-coding: utf-8-*-
+# -*- coding: utf-8 -*- 
 '''
 author:fasico
 start_time:10.11.18
@@ -14,30 +14,30 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 def main():
-    #读取文件
-    try:
-        with open('tk/ZGJDS_1.json','r',encoding='utf-8') as tk_json:
-            tk = json.load(tk_json)
-            
-    except FileNotFoundError:
-        print('file miss or broken!')
-    
-    username = 'your usename'
-    password = 'your password.'
+    #config
+    username = '111111'
+    password = '111111'
+    course_id = '73'
+    tk = {}
+    tk_name = 'tk/MG.json'
+    jids = [2033,2034,2035,2037,2038,2039,2040,2041,2042,2043,2044,2045,2046,2047,2049,2052,2096,2098,2099,2101,2103,2104,2105,2106,2107,2108,2109,2110,2111,2112,2113,2114,2115,2116,2117,2118,2119,2120,2121,2122]
 
     try:
         browser = webdriver.Chrome('E:/chromedriver')
     except FileNotFoundError:
         print('webdriver not found!')
 
+    index_url = 'http://www.attop.com/wk/index.htm?id=' + course_id
+
     try:
-        browser.get('http://www.attop.com/wk/index.htm?id=74')
+        browser.get(index_url)
+        time.sleep(2)
     except TimeoutException:
         print("Time out")
-    finally:
-        browser.find_element_by_class_name('Blue').click()
+
     try:
         #login
+        browser.find_element_by_class_name('Blue').click()
         browser.switch_to_frame('pageiframe')
         time.sleep(1)
         browser.find_element_by_id('username').send_keys(username)
@@ -48,39 +48,49 @@ def main():
         
     except NoSuchElementException:
         print('NoSuchElement!')
+    
+    learn_url = 'http://www.attop.com/wk/learn.htm?id=' + course_id
 
-    for jid in tk.keys():#遍历目录
+    for jid in jids:
+
         try:
-            browser.get('http://www.attop.com/wk/learn.htm?id=74&' + jid)
-        except TimeoutException:
-            print('Time out at :'+ jid)
+            browser.get(learn_url + '&jid=' + str(jid))
+            print('starting: '+str(jid))
+            time.sleep(3)
+            WebDriverWait(browser,10).until(EC.presence_of_all_elements_located)
+            xts = browser.find_elements_by_class_name('ed-ans')
+            jid_id = 'jid=' + str(jid)
+            tk[jid_id] = {}
+            for xt in xts:
+                id = xt.get_attribute('id')    
+                tk[jid_id][id] = []
+                for choice_id in list(range(1,6)):
+                    choice_xpath = '//*[@id="' + id + '"]/ul/li[' + str(choice_id) + ']/input'
+                    WebDriverWait(browser,10).until(EC.presence_of_all_elements_located)
+                    try:
+                        choice = browser.find_element_by_xpath(choice_xpath)
+                        browser.execute_script('arguments[0].scrollIntoView(false);',choice)
+                        checked = choice.get_attribute('checked')
+                        if checked:
+                            value = choice.get_attribute('value')
+                            print('jid=' + str(jid)+'-'+id+'-'+ value)
+                            tk[jid_id][id].append(int(value))
+
+                        else:
+                            pass
+                    except:
+                        break
+        except:
+            continue
         
-        WebDriverWait(browser,10).until(EC.presence_of_all_elements_located)
-        print('starting'+jid)
-        for tx_id in tk[jid].keys():#遍历每章节所有问题
-            #for ans in tk[jid][tx_id]:#遍历每道题的答案
-            for each in list(range(1,6)):#遍历所有选项
-                input_xpath = '//*[@id="' + tx_id + '"]/ul/li[' + str(each) + ']/input'                  
-                WebDriverWait(browser,10).until(EC.presence_of_all_elements_located)
-                time.sleep(0.5)
-                try:
-                    ans_input = browser.find_element_by_xpath(input_xpath)
-                    value = int(ans_input.get_attribute('value'))
-                    checked = ans_input.get_attribute('checked')
-                    #匹配正确答案                    
-                    if checked:
-                        print(jid+'-'+tx_id+'-'+str(value))
-                        tk[jid][tx_id].append(value)
-                    else :
-                        pass
-                except NoSuchElementException:
-                    pass
-                    #print('---'+str(each)+'---')
-                finally:
-                    pass
-    print(tk)
-    with open('tk/ZGJDS_f.json','w',encoding='utf-8') as zf_json:
-        zf_json.write(json.dumps(tk))
+
+    tk_json = json.dumps(tk,indent=4)
+    print(tk_json)
+
+    with open(tk_name,'w',encoding='utf-8') as newtk_json:
+        newtk_json.write(tk_json)   
+        newtk_json.close()    
+
     print('compllete!')
     
     time.sleep(10)
